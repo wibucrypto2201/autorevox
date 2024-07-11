@@ -20,13 +20,16 @@ Anh em có thể mua 3u/100 proxy / 1 tháng tại webshare nhớ để định 
 https://www.webshare.io/?referral_code=u4sh1tlp6505
 
 # Bước 6
+Chạy tất cả những link ref mà bạn muốn chạy vào file linkref.txt
+
+# Bước 7
 Chạy file install.bat
 
-# Bước 7 
+# Bước 8 
 Edit lại link ref và số luồng muốn chạy 
 Link ref ở 136 và số luồng ở dòng 324
 
-# Bước 8
+# Bước 9
 Chạy file Revox1.py
 
 💩💩💩💩💩💩💩
