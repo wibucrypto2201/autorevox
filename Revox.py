@@ -11,6 +11,7 @@ from fake_useragent import UserAgent
 import random
 import csv
 from threading import Semaphore, Thread
+import psutil
 
 window_width = 1200
 window_height = 1000
@@ -48,6 +49,14 @@ def arrange_windows(drivers, items_per_row, window_width, window_height):
             driver.set_window_size(window_width, window_height)
         except NoSuchWindowException:
             print(f"Window for driver {i} is no longer available. Skipping arrangement.")
+
+def kill_processes():
+    for proc in psutil.process_iter(['pid', 'name']):
+        if proc.info['name'] in ['chrome.exe', 'chromedriver.exe']:
+            try:
+                proc.kill()
+            except psutil.NoSuchProcess:
+                pass
 
 def task(private_key, proxy, link_ref, semaphore):
     global webs
@@ -239,6 +248,11 @@ def task(private_key, proxy, link_ref, semaphore):
             ).click()
         print("Claim 20 Credit")
         web.switch_to.window(web.window_handles[0])
+        wait(web, 30).until(EC.presence_of_element_located((By.XPATH, 
+        "//*[text()[contains(.,'7-day Check-in Bonus')]]"))) 
+        script = 'document.querySelector("#app > div.modal > div > div.f16 > div").click()'
+        web.execute_script(script)
+        print("Claim CheckIn Done")
         wait(web, 100).until(EC.presence_of_element_located((By.XPATH, 
         "//*[text()[contains(.,'20/20')]]"))) 
         wait(web, 10).until(
@@ -263,6 +277,7 @@ def task(private_key, proxy, link_ref, semaphore):
         except Exception as e:
             print(f"Error clicking the initial button: {e}")
             web.quit()
+            kill_processes()
             exit(1)
 
         # Wait until the 'Hide' element is present
@@ -273,6 +288,7 @@ def task(private_key, proxy, link_ref, semaphore):
         except Exception as e:
             print(f"Error waiting for 'Hide' element: {e}")
             web.quit()
+            kill_processes()
             exit(1)
 
         # Define the selectors
@@ -302,30 +318,22 @@ def task(private_key, proxy, link_ref, semaphore):
         # Lấy giá trị của phần tử (có thể là text hoặc thuộc tính)
         value = invite.text  
         print("Get Ref Link")
-        wait(web, 10).until(
-            EC.element_to_be_clickable(
-                (
-                    By.XPATH,
-                    "/html/body/div[2]/div/div[2]/div/div/div[2]/div/div[3]/div[1]/div[3]/div/div",
-                )
-            )
-        ).click()
+
         wait(web, 30).until(EC.presence_of_element_located((By.XPATH, 
-        "//*[text()[contains(.,'7-day Check-in Bonus')]]"))) 
-        script = 'document.querySelector("#app > div > div.content-box > div > div > div.fbv.oa > div > div:nth-child(3) > div:nth-child(2) > div.modal > div > div.f16 > div").click()'
-        web.execute_script(script)
-        print("Claim CheckIn Done")
+        "//*[text()[contains(.,'Today')]]"))) 
+        web.refresh()
         wait(web, 30).until(EC.presence_of_element_located((By.XPATH, 
         "//*[text()[contains(.,'Analyse 1 Token')]]"))) 
         wait(web, 10).until(
             EC.element_to_be_clickable(
                 (
                     By.XPATH,
-                    "/html/body/div[2]/div/div[2]/div/div/div[2]/div/div[3]/div[2]/div[3]/div",
+                    "/html/body/div[2]/div/div[2]/div/div/div[2]/div/div[3]/div[2]/div/div[3]/div",
                 )
             )
         ).click()
         sleep(2)
+        web.refresh()
         print("Claim Daily Analyze")
         wait(web, 10).until(
             EC.element_to_be_clickable(
@@ -335,8 +343,11 @@ def task(private_key, proxy, link_ref, semaphore):
                 )
             )
         ).click()
-        sleep(2)
         print("Claim Researcher I")
+        wait(web, 30).until(EC.presence_of_element_located((By.XPATH, 
+        "//*[text()[contains(.,'300')]]"))) 
+        print("DONE")
+
         fieldnames = ['invite', 'privatekeys']
         rows = [{'invite': value, 'privatekeys': private_key}]
         with open('NEWSuccessDATA.csv', 'a', encoding='UTF8', newline='') as f1:
@@ -380,6 +391,7 @@ def task(private_key, proxy, link_ref, semaphore):
             web.quit()
             web = None
         semaphore.release()
+        kill_processes()  # Ensure processes are killed after each task
 
 def main():
     proxy_file = "proxy.txt"
