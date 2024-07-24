@@ -12,6 +12,7 @@ import random
 import csv
 from threading import Semaphore, Thread
 import psutil
+import os
 
 window_width = 1200
 window_height = 1000
@@ -50,13 +51,14 @@ def arrange_windows(drivers, items_per_row, window_width, window_height):
         except NoSuchWindowException:
             print(f"Window for driver {i} is no longer available. Skipping arrangement.")
 
-def kill_processes():
-    for proc in psutil.process_iter(['pid', 'name']):
-        if proc.info['name'] in ['chrome.exe', 'chromedriver.exe']:
-            try:
-                proc.kill()
-            except psutil.NoSuchProcess:
-                pass
+def kill_processes(web_pid):
+    try:
+        parent = psutil.Process(web_pid)
+        for child in parent.children(recursive=True):
+            child.kill()
+        parent.kill()
+    except psutil.NoSuchProcess:
+        pass
 
 def task(private_key, proxy, link_ref, semaphore):
     global webs
@@ -90,6 +92,7 @@ def task(private_key, proxy, link_ref, semaphore):
         proxy_helper = SeleniumAuthenticatedProxy(proxy_url=proxy_url)
         proxy_helper.enrich_chrome_options(options)
         web = uc.Chrome(chrome_options=options)
+        web_pid = web.service.process.pid
         webs.append(web)
         arrange_windows(webs, 4, window_width, window_height)
         current = web.current_window_handle
@@ -242,7 +245,7 @@ def task(private_key, proxy, link_ref, semaphore):
                 EC.element_to_be_clickable(
                     (
                         By.XPATH,
-                        "/html/body/div[1]/div/div/div/div/div/div[7]/div/button[2]",
+                        "/html/body/div[1]/div/div/div/div/div.div[7]/div/button[2]",
                     )
                 )
             ).click()
@@ -277,7 +280,7 @@ def task(private_key, proxy, link_ref, semaphore):
         except Exception as e:
             print(f"Error clicking the initial button: {e}")
             web.quit()
-            kill_processes()
+            kill_processes(web_pid)
             exit(1)
 
         # Wait until the 'Hide' element is present
@@ -288,7 +291,7 @@ def task(private_key, proxy, link_ref, semaphore):
         except Exception as e:
             print(f"Error waiting for 'Hide' element: {e}")
             web.quit()
-            kill_processes()
+            kill_processes(web_pid)
             exit(1)
 
         # Define the selectors
@@ -391,7 +394,7 @@ def task(private_key, proxy, link_ref, semaphore):
             web.quit()
             web = None
         semaphore.release()
-        kill_processes()  # Ensure processes are killed after each task
+        kill_processes(web_pid)  # Ensure processes are killed after each task
 
 def main():
     proxy_file = "proxy.txt"
